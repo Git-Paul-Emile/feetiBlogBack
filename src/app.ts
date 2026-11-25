@@ -1,0 +1,60 @@
+import cors from "cors";
+import express from "express";
+import helmet from "helmet";
+import type { RequestHandler } from "express";
+import { env } from "./config/env.js";
+import { ForbiddenError } from "./core/errors/ForbiddenError.js";
+import { errorHandler } from "./core/middlewares/errorHandler.js";
+import { notFound } from "./core/middlewares/notFound.js";
+import { apiRateLimiter } from "./core/middlewares/rateLimiters.js";
+import { requestLogger } from "./core/middlewares/requestLogger.js";
+import { apiRoutes } from "./routes.js";
+
+export const app = express();
+const allowedOrigins = new Set(env.CORS_ORIGINS);
+app.set("trust proxy", env.TRUST_PROXY_HOPS);
+
+const httpsRedirect: RequestHandler = (request, response, next) => {
+  if (env.NODE_ENV !== "production" || request.secure) {
+    next();
+    return;
+  }
+
+  if (!env.PUBLIC_BASE_URL) {
+    next(new Error("PUBLIC_BASE_URL is required to redirect production traffic to HTTPS."));
+    return;
+  }
+
+  response.redirect(308, new URL(request.originalUrl, env.PUBLIC_BASE_URL).toString());
+};
+
+app.disable("x-powered-by");
+app.use(helmet());
+app.use(httpsRedirect);
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (origin === undefined) {
+        callback(null, false);
+        return;
+      }
+
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new ForbiddenError());
+    },
+    methods: ["GET", "HEAD", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+    maxAge: 600,
+  }),
+);
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
+app.use(apiRateLimiter);
+app.use(requestLogger);
+app.use("/api/v1", apiRoutes);
+app.use(notFound);
+app.use(errorHandler);
