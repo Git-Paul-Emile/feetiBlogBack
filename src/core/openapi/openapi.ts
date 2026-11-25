@@ -91,7 +91,7 @@ const slugParameter = {
 
 const healthDataSchema = z.strictObject({
   status: z.literal("ok"),
-  mode: z.literal("mock"),
+  mode: z.literal("database"),
 });
 
 export const openApiDocument = {
@@ -99,7 +99,7 @@ export const openApiDocument = {
   info: {
     title: "Feeti Blog API",
     version: "1.0.0",
-    description: "API de lecture autonome alimentée par les données mockées du front.",
+    description: "API de lecture autonome alimentée par la base FeetiBlog.",
   },
   servers: [{ url: "/" }],
   paths: {
@@ -121,7 +121,7 @@ export const openApiDocument = {
     "/api/v1/health": {
       get: {
         tags: ["Health"],
-        summary: "Vérifier la disponibilité de l'API mock.",
+        summary: "Vérifier la disponibilité de l'API et de sa base de données.",
         responses: {
           "200": jsonResponse("API disponible.", successSchema(healthDataSchema)),
           "403": standardErrors["403"],

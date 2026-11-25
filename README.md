@@ -1,29 +1,46 @@
-# Backend Feeti Blog
+# Backend FeetiBlog
 
-API REST autonome en lecture seule. Elle reprend les jeux de données `products` et `content` du frontend, copiés dans `src/features/` et validés au démarrage par les schémas Zod.
+API REST de lecture autonome. Le front conserve ses mocks et n'appelle pas cette API.
+Le backend stocke ses contenus dans le schéma PostgreSQL `feeti_blog`, sur la même
+instance que FeetiTicket, sans utiliser les tables de billetterie. Les images des seeds
+sont envoyées dans le dossier Cloudinary `feeti-blog/`.
 
-Le frontend n'appelle pas cette API. Aucun accès à une base de données ou à Cloudinary n'est configuré. Les URLs d'images reprises dans les mocks restent identiques à celles du frontend jusqu'à la réception des paramètres Cloudinary.
+## Configuration
 
-Le build et le typecheck utilisent TypeScript 7. ESLint charge le paquet de compatibilité TypeScript 6 recommandé par Microsoft, car `typescript-eslint` ne prend pas encore en charge l'API de TypeScript 7.
+Copier les variables `DATABASE_URL`, `DIRECT_URL` et `CLOUDINARY_URL` de FeetiTicket
+dans `.env`, puis ajouter `schema=feeti_blog` aux paramètres de requête des deux URLs
+PostgreSQL. Ne pas committer `.env`. Les noms des variables et des exemples sont dans
+`.env.example`.
 
-## Démarrer
+En production, définir également `NODE_ENV=production` et `PUBLIC_BASE_URL` avec l'URL
+HTTPS du service. `render.yaml` décrit les commandes de build, migration, démarrage et
+health check. Les trois variables secrètes doivent être renseignées dans l'environnement
+Render.
 
-Depuis `back/` :
+## Migration et données initiales
 
 ```bash
 npm install
-npm run dev
+npm run build
+npm run db:migrate:deploy
+npm run db:seed
 ```
 
-Le serveur écoute sur `http://localhost:3000` par défaut. Les variables disponibles sont listées dans `.env.example`. `CORS_ORIGINS` reste vide tant qu'une origine cliente n'a pas été autorisée. En production, `PUBLIC_BASE_URL` doit être une URL HTTPS. `TRUST_PROXY_HOPS` doit correspondre au nombre de proxys fiables devant le serveur.
+La migration crée uniquement le schéma `feeti_blog`. Le seed est réexécutable : il met à
+jour ses catégories, articles, tutoriels, pages et produits sans supprimer d'autres
+données. Il transfère les images des mocks vers des identifiants stables sous
+`feeti-blog/` dans Cloudinary, puis enregistre leurs URLs sécurisées en base.
+
+Sur Render, le démarrage applique les migrations. Exécuter `npm run db:seed` une fois
+depuis le shell du service après avoir configuré les variables d'environnement.
 
 ## Routes
 
-Toutes les routes sont préfixées par `/api/v1`.
+Toutes les routes utilisent le préfixe `/api/v1`.
 
 | Méthode | Route                     | Réponse                                       |
 | ------- | ------------------------- | --------------------------------------------- |
-| GET     | `/health`                 | disponibilité de l'API mock                   |
+| GET     | `/health`                 | disponibilité de l'API et de PostgreSQL       |
 | GET     | `/products`               | produits paginés, filtrables par `slug`       |
 | GET     | `/products/:slug`         | produit par slug                              |
 | GET     | `/content/articles`       | articles paginés, filtrables par `category`   |
@@ -31,9 +48,3 @@ Toutes les routes sont préfixées par `/api/v1`.
 | GET     | `/content/tutorials`      | tutoriels paginés, filtrables par `level`     |
 | GET     | `/content/pages/:slug`    | page d'information par slug                   |
 | GET     | `/openapi.json`           | contrat OpenAPI généré depuis les schémas Zod |
-
-Les routes de collection acceptent `page`, `limit` (maximum 100), `search` et `sort`. Les erreurs et les succès utilisent une enveloppe JSON stable.
-
-## Données et intégrations futures
-
-Les repositories mockés sont la seule source de données des services. Le choix du fournisseur de base serverless et les connexions restent en attente des URLs fournies. Les images sont des champs URL simples; aucun SDK ni secret Cloudinary n'est nécessaire pour servir les mocks.

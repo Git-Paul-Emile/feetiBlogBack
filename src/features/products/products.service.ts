@@ -1,11 +1,11 @@
 import { NotFoundError } from "../../core/errors/NotFoundError.js";
 import { queryCollection } from "../../core/http/pagination.js";
 import type { ProductDto } from "./products.dto.js";
-import { mockProductsRepository } from "./products.repository.js";
+import { databaseProductsRepository } from "./products.repository.js";
 import type { ProductsQuery } from "./products.schemas.js";
 
-export function listProducts(query: ProductsQuery) {
-  return queryCollection(mockProductsRepository.findAll(), {
+export async function listProducts(query: ProductsQuery) {
+  return queryCollection(await databaseProductsRepository.findAll(), {
     query,
     filter: (product) => query.slug === undefined || product.slug === query.slug,
     searchFields: [
@@ -23,8 +23,8 @@ export function listProducts(query: ProductsQuery) {
   });
 }
 
-export function getProductBySlug(slug: string): ProductDto {
-  const product = mockProductsRepository.findBySlug(slug);
+export async function getProductBySlug(slug: string): Promise<ProductDto> {
+  const product = await databaseProductsRepository.findBySlug(slug);
   if (!product) throw new NotFoundError("Ce produit est introuvable.");
   return product;
 }

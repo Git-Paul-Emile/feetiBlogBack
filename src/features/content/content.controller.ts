@@ -6,27 +6,27 @@ import type { ArticlesQuery, TutorialsQuery } from "./content.schemas.js";
 import type { ArticleDto, InfoPageDto } from "./content.dto.js";
 
 export const contentController = {
-  listArticles: asyncHandler((_request, response) => {
+  listArticles: asyncHandler(async (_request, response) => {
     const query = getValidatedInput<ArticlesQuery>(response, "query");
-    const result = listArticles(query);
+    const result = await listArticles(query);
     response.status(200).json(apiSuccessResponse(result, "Les articles ont été récupérés."));
   }),
 
-  getArticleBySlug: asyncHandler((_request, response) => {
+  getArticleBySlug: asyncHandler(async (_request, response) => {
     const { slug } = getValidatedInput<{ slug: string }>(response, "params");
-    const article: ArticleDto = getArticleBySlug(slug);
+    const article: ArticleDto = await getArticleBySlug(slug);
     response.status(200).json(apiSuccessResponse(article, "L'article a été récupéré."));
   }),
 
-  listTutorials: asyncHandler((_request, response) => {
+  listTutorials: asyncHandler(async (_request, response) => {
     const query = getValidatedInput<TutorialsQuery>(response, "query");
-    const result = listTutorials(query);
+    const result = await listTutorials(query);
     response.status(200).json(apiSuccessResponse(result, "Les tutoriels ont été récupérés."));
   }),
 
-  getInfoPageBySlug: asyncHandler((_request, response) => {
+  getInfoPageBySlug: asyncHandler(async (_request, response) => {
     const { slug } = getValidatedInput<{ slug: string }>(response, "params");
-    const page: InfoPageDto = getInfoPageBySlug(slug);
+    const page: InfoPageDto = await getInfoPageBySlug(slug);
     response.status(200).json(apiSuccessResponse(page, "La page d'information a été récupérée."));
   }),
 };

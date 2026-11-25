@@ -6,15 +6,15 @@ import type { ProductDto } from "./products.dto.js";
 import type { ProductsQuery } from "./products.schemas.js";
 
 export const productsController = {
-  list: asyncHandler((_request, response) => {
+  list: asyncHandler(async (_request, response) => {
     const query = getValidatedInput<ProductsQuery>(response, "query");
-    const result = listProducts(query);
+    const result = await listProducts(query);
     response.status(200).json(apiSuccessResponse(result, "Les produits ont été récupérés."));
   }),
 
-  getBySlug: asyncHandler((_request, response) => {
+  getBySlug: asyncHandler(async (_request, response) => {
     const { slug } = getValidatedInput<{ slug: string }>(response, "params");
-    const product: ProductDto = getProductBySlug(slug);
+    const product: ProductDto = await getProductBySlug(slug);
     response.status(200).json(apiSuccessResponse(product, "Le produit a été récupéré."));
   }),
 };

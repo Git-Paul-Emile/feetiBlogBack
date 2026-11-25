@@ -10,6 +10,9 @@ const envSchema = z
       z.string().url().optional(),
     ),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
+    DATABASE_URL: z.string().min(1),
+    DIRECT_URL: z.string().min(1),
+    CLOUDINARY_URL: z.string().min(1),
     CORS_ORIGINS: z
       .string()
       .default("")

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: feeti-blog-backend
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm run db:migrate:deploy && npm start
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: TRUST_PROXY_HOPS
+        value: "1"

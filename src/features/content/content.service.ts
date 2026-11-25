@@ -1,11 +1,11 @@
 import { NotFoundError } from "../../core/errors/NotFoundError.js";
 import { queryCollection } from "../../core/http/pagination.js";
-import { mockContentRepository } from "./content.repository.js";
+import { databaseContentRepository } from "./content.repository.js";
 import type { ArticlesQuery, TutorialsQuery } from "./content.schemas.js";
 import type { ArticleDto, InfoPageDto } from "./content.dto.js";
 
-export function listArticles(query: ArticlesQuery) {
-  return queryCollection(mockContentRepository.findArticles(), {
+export async function listArticles(query: ArticlesQuery) {
+  return queryCollection(await databaseContentRepository.findArticles(), {
     query,
     filter: (article) => query.category === undefined || article.category === query.category,
     searchFields: [
@@ -23,14 +23,14 @@ export function listArticles(query: ArticlesQuery) {
   });
 }
 
-export function getArticleBySlug(slug: string): ArticleDto {
-  const article = mockContentRepository.findArticleBySlug(slug);
+export async function getArticleBySlug(slug: string): Promise<ArticleDto> {
+  const article = await databaseContentRepository.findArticleBySlug(slug);
   if (!article) throw new NotFoundError("Cet article est introuvable.");
   return article;
 }
 
-export function listTutorials(query: TutorialsQuery) {
-  return queryCollection(mockContentRepository.findTutorials(), {
+export async function listTutorials(query: TutorialsQuery) {
+  return queryCollection(await databaseContentRepository.findTutorials(), {
     query,
     filter: (tutorial) => query.level === undefined || tutorial.level === query.level,
     searchFields: [
@@ -46,8 +46,8 @@ export function listTutorials(query: TutorialsQuery) {
   });
 }
 
-export function getInfoPageBySlug(slug: string): InfoPageDto {
-  const page = mockContentRepository.findInfoPageBySlug(slug);
+export async function getInfoPageBySlug(slug: string): Promise<InfoPageDto> {
+  const page = await databaseContentRepository.findInfoPageBySlug(slug);
   if (!page) throw new NotFoundError("Cette page d'information est introuvable.");
   return page;
 }

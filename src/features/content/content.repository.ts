@@ -1,22 +1,85 @@
-import { z } from "zod";
-import { articles, infoPages, tutorials } from "./content.data.js";
+import { prisma } from "../../lib/prisma.js";
 import type { ArticleDto, InfoPageDto, TutorialDto } from "./content.dto.js";
-import { articleSchema, infoPageSchema, tutorialSchema } from "./content.schemas.js";
 
 export interface ContentRepository {
-  findArticles(): readonly ArticleDto[];
-  findArticleBySlug(slug: string): ArticleDto | undefined;
-  findTutorials(): readonly TutorialDto[];
-  findInfoPageBySlug(slug: string): InfoPageDto | undefined;
+  findArticles(): Promise<readonly ArticleDto[]>;
+  findArticleBySlug(slug: string): Promise<ArticleDto | undefined>;
+  findTutorials(): Promise<readonly TutorialDto[]>;
+  findInfoPageBySlug(slug: string): Promise<InfoPageDto | undefined>;
 }
 
-const mockArticles = z.array(articleSchema).parse(articles);
-const mockTutorials = z.array(tutorialSchema).parse(tutorials);
-const mockInfoPages = z.record(z.string(), infoPageSchema).parse(infoPages);
+const articleInclude = {
+  category: true,
+  sections: { orderBy: { position: "asc" as const } },
+};
 
-export const mockContentRepository: ContentRepository = {
-  findArticles: () => mockArticles,
-  findArticleBySlug: (slug) => mockArticles.find((article) => article.slug === slug),
-  findTutorials: () => mockTutorials,
-  findInfoPageBySlug: (slug) => mockInfoPages[slug],
+async function findArticleRecords() {
+  return prisma.blogArticle.findMany({
+    orderBy: { position: "asc" },
+    include: articleInclude,
+  });
+}
+
+async function findArticleRecordBySlug(slug: string) {
+  return prisma.blogArticle.findUnique({ where: { slug }, include: articleInclude });
+}
+
+type ArticleRecord = Awaited<ReturnType<typeof findArticleRecords>>[number];
+
+function toArticleDto(article: ArticleRecord): ArticleDto {
+  return {
+    slug: article.slug,
+    category: article.category.name,
+    read: article.readTime,
+    title: article.title,
+    excerpt: article.excerpt,
+    lead: article.lead,
+    image: article.imageUrl,
+    sections: article.sections.map((section) => ({
+      title: section.title,
+      paragraphs: section.paragraphs,
+    })),
+  };
+}
+
+async function findTutorialRecords() {
+  return prisma.blogTutorial.findMany({ orderBy: { position: "asc" } });
+}
+
+function toTutorialDto(tutorial: Awaited<ReturnType<typeof findTutorialRecords>>[number]): TutorialDto {
+  return {
+    duration: tutorial.duration,
+    level: tutorial.level,
+    title: tutorial.title,
+    description: tutorial.description,
+    image: tutorial.imageUrl,
+  };
+}
+
+async function findInfoPageRecordBySlug(slug: string) {
+  return prisma.blogInfoPage.findUnique({ where: { slug } });
+}
+
+export const databaseContentRepository: ContentRepository = {
+  async findArticles() {
+    return (await findArticleRecords()).map(toArticleDto);
+  },
+  async findArticleBySlug(slug) {
+    const article = await findArticleRecordBySlug(slug);
+    return article ? toArticleDto(article) : undefined;
+  },
+  async findTutorials() {
+    return (await findTutorialRecords()).map(toTutorialDto);
+  },
+  async findInfoPageBySlug(slug) {
+    const page = await findInfoPageRecordBySlug(slug);
+    if (!page) return undefined;
+
+    return {
+      eyebrow: page.eyebrow,
+      title: page.title,
+      intro: page.intro,
+      sections: page.sections,
+    };
+  },
 };
