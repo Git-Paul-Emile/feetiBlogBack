@@ -11,8 +11,19 @@ import { requestLogger } from "./core/middlewares/requestLogger.js";
 import { apiRoutes } from "./routes.js";
 
 export const app = express();
-const allowedOrigins = new Set(env.CORS_ORIGINS);
+export const allowedOrigins = new Set(env.CORS_ORIGINS);
 app.set("trust proxy", env.TRUST_PROXY_HOPS);
+
+const enforceTrustedOrigin: RequestHandler = (request, _response, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) {
+    const origin = request.get("origin");
+    if (!origin || !allowedOrigins.has(origin)) {
+      next(new ForbiddenError());
+      return;
+    }
+  }
+  next();
+};
 
 const httpsRedirect: RequestHandler = (request, response, next) => {
   if (env.NODE_ENV !== "production" || request.secure) {
@@ -46,13 +57,15 @@ app.use(
 
       callback(new ForbiddenError());
     },
-    methods: ["GET", "HEAD", "OPTIONS"],
+    credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
     maxAge: 600,
   }),
 );
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false, limit: "100kb" }));
+app.use("/api/v1", enforceTrustedOrigin);
 app.use(apiRateLimiter);
 app.use(requestLogger);
 app.use("/api/v1", apiRoutes);

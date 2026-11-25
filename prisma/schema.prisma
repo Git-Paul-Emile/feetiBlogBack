@@ -32,14 +32,55 @@ model BlogArticle {
   title         String
   excerpt       String
   lead          String
-  imageUrl      String
-  imagePublicId String
+  imageUrl      String               @default("")
+  imagePublicId String               @default("")
   sections      BlogArticleSection[]
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
   @@index([categorySlug, position])
   @@map("articles")
+  @@schema("feeti_blog")
+}
+
+model BlogAdmin {
+  id                String                       @id @default(cuid())
+  email             String                       @unique
+  name              String
+  passwordHash      String
+  emailVerifiedAt   DateTime?
+  sessions          BlogAdminSession[]
+  verificationTokens BlogEmailVerificationToken[]
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+
+  @@map("admin_users")
+  @@schema("feeti_blog")
+}
+
+model BlogAdminSession {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  adminId   String
+  admin     BlogAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([adminId, expiresAt])
+  @@map("admin_sessions")
+  @@schema("feeti_blog")
+}
+
+model BlogEmailVerificationToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  adminId   String
+  admin     BlogAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([adminId, expiresAt])
+  @@map("admin_email_verification_tokens")
   @@schema("feeti_blog")
 }
 

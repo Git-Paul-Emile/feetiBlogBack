@@ -17,3 +17,13 @@ services:
         sync: false
       - key: TRUST_PROXY_HOPS
         value: "1"
+      - key: ADMIN_REGISTRATION_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: FRONTEND_BASE_URL
+        value: https://feetiblogfront.vercel.app
+      - key: CORS_ORIGINS
+        value: https://feetiblogfront.vercel.app

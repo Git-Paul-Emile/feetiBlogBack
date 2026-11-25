@@ -1,6 +1,36 @@
-import type { Article, InfoPageContent } from "./content.data.js";
-import { tutorials } from "./content.data.js";
+export interface ArticleSectionDto {
+  title: string;
+  paragraphs: string[];
+}
 
-export type ArticleDto = Article;
-export type TutorialDto = (typeof tutorials)[number];
-export type InfoPageDto = InfoPageContent;
+export interface ArticleDto {
+  slug: string;
+  category: string;
+  read: string;
+  title: string;
+  excerpt: string;
+  lead: string;
+  image: string;
+  imagePublicId: string;
+  sections: ArticleSectionDto[];
+}
+
+export interface TutorialDto {
+  duration: string;
+  level: string;
+  title: string;
+  description: string;
+  image: string;
+}
+
+export interface InfoPageDto {
+  eyebrow: string;
+  title: string;
+  intro: string;
+  sections: string[];
+}
+
+export interface CategoryDto {
+  slug: string;
+  name: string;
+}

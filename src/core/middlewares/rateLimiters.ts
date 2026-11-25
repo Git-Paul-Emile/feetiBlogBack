@@ -13,3 +13,15 @@ export const apiRateLimiter: RequestHandler = rateLimit({
       .json(apiErrorResponse(429, "RATE_LIMIT_EXCEEDED", "Trop de requêtes. Réessayez plus tard."));
   },
 });
+
+export const authRateLimiter: RequestHandler = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler(_request, response) {
+    response
+      .status(429)
+      .json(apiErrorResponse(429, "AUTH_RATE_LIMIT_EXCEEDED", "Trop de tentatives. Réessayez plus tard."));
+  },
+});

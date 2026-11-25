@@ -8,6 +8,16 @@ import {
   tutorialSchema,
 } from "../../features/content/content.schemas.js";
 import { productSchema, productsQuerySchema } from "../../features/products/products.schemas.js";
+import {
+  adminLoginSchema,
+  adminRegistrationSchema,
+  emailVerificationSchema,
+} from "../../features/auth/auth.schemas.js";
+import {
+  articleWriteSchema,
+  categoriesQuerySchema,
+  categorySchema,
+} from "../../features/content/content.schemas.js";
 
 interface OpenApiObjectSchema {
   properties?: Record<string, Record<string, unknown>>;
@@ -94,14 +104,51 @@ const healthDataSchema = z.strictObject({
   mode: z.literal("database"),
 });
 
+const adminSessionSchema = z.strictObject({
+  admin: z.strictObject({ id: z.string(), name: z.string() }),
+});
+const registrationResponseSchema = z.strictObject({ emailConfirmationRequired: z.literal(true) });
+const uploadResponseSchema = z.strictObject({ publicId: z.string(), secureUrl: z.string().url() });
+const authErrors = {
+  ...standardErrors,
+  "401": jsonResponse("Authentification ou invitation invalide.", apiErrorResponseSchema),
+  "409": jsonResponse("Un compte ou un article existe déjà.", apiErrorResponseSchema),
+  "422": jsonResponse("Les données envoyées ne sont pas acceptées.", apiErrorResponseSchema),
+  "503": jsonResponse("Le service n'est pas configuré.", apiErrorResponseSchema),
+};
+const articleMutationErrors = {
+  ...standardErrors,
+  "401": jsonResponse("Session administrateur requise.", apiErrorResponseSchema),
+  "404": jsonResponse("Ressource introuvable.", apiErrorResponseSchema),
+  "409": jsonResponse("Slug ou position déjà utilisé.", apiErrorResponseSchema),
+  "422": jsonResponse("Les données envoyées ne sont pas acceptées.", apiErrorResponseSchema),
+};
+
+function requestBody(schema: z.ZodType) {
+  return {
+    required: true,
+    content: { "application/json": { schema: toOpenApiSchema(schema) } },
+  };
+}
+
 export const openApiDocument = {
   openapi: "3.0.3",
   info: {
     title: "Feeti Blog API",
     version: "1.0.0",
-    description: "API de lecture autonome alimentée par la base FeetiBlog.",
+    description: "API Feeti Blog alimentée par la base et protégée pour la gestion administrateur.",
   },
   servers: [{ url: "/" }],
+  components: {
+    securitySchemes: {
+      adminSession: {
+        type: "apiKey",
+        in: "cookie",
+        name: "feeti_blog_session",
+        description: "Cookie de session HttpOnly créé après la connexion administrateur.",
+      },
+    },
+  },
   paths: {
     "/api/v1/openapi.json": {
       get: {
@@ -124,6 +171,80 @@ export const openApiDocument = {
         summary: "Vérifier la disponibilité de l'API et de sa base de données.",
         responses: {
           "200": jsonResponse("API disponible.", successSchema(healthDataSchema)),
+          "403": standardErrors["403"],
+          "429": standardErrors["429"],
+          "500": standardErrors["500"],
+        },
+      },
+    },
+    "/api/v1/auth/admin-registrations": {
+      post: {
+        tags: ["Auth"],
+        summary: "Créer un compte administrateur avec invitation et confirmation e-mail.",
+        requestBody: requestBody(adminRegistrationSchema),
+        responses: {
+          "202": jsonResponse("Confirmation envoyée par e-mail.", successSchema(registrationResponseSchema)),
+          "400": standardErrors["400"],
+          "401": authErrors["401"],
+          "403": standardErrors["403"],
+          "409": authErrors["409"],
+          "429": standardErrors["429"],
+          "503": authErrors["503"],
+          "500": standardErrors["500"],
+        },
+      },
+    },
+    "/api/v1/auth/email-verifications": {
+      post: {
+        tags: ["Auth"],
+        summary: "Confirmer l'adresse e-mail administrateur et ouvrir une session.",
+        requestBody: requestBody(emailVerificationSchema),
+        responses: {
+          "200": jsonResponse("Adresse confirmée.", successSchema(adminSessionSchema)),
+          "400": standardErrors["400"],
+          "401": authErrors["401"],
+          "403": standardErrors["403"],
+          "429": standardErrors["429"],
+          "500": standardErrors["500"],
+        },
+      },
+    },
+    "/api/v1/auth/sessions": {
+      post: {
+        tags: ["Auth"],
+        summary: "Ouvrir une session administrateur.",
+        requestBody: requestBody(adminLoginSchema),
+        responses: {
+          "200": jsonResponse("Session ouverte. Le cookie est HttpOnly.", successSchema(adminSessionSchema)),
+          "400": standardErrors["400"],
+          "401": authErrors["401"],
+          "403": standardErrors["403"],
+          "429": standardErrors["429"],
+          "500": standardErrors["500"],
+        },
+      },
+    },
+    "/api/v1/auth/session": {
+      get: {
+        tags: ["Auth"],
+        summary: "Lire la session administrateur active.",
+        security: [{ adminSession: [] }],
+        responses: {
+          "200": jsonResponse("Session active.", successSchema(adminSessionSchema)),
+          "401": authErrors["401"],
+          "403": standardErrors["403"],
+          "429": standardErrors["429"],
+          "500": standardErrors["500"],
+        },
+      },
+      delete: {
+        tags: ["Auth"],
+        summary: "Fermer la session administrateur.",
+        responses: {
+          "200": jsonResponse(
+            "Session fermée.",
+            successSchema(z.strictObject({ loggedOut: z.literal(true) })),
+          ),
           "403": standardErrors["403"],
           "429": standardErrors["429"],
           "500": standardErrors["500"],
@@ -153,6 +274,22 @@ export const openApiDocument = {
         parameters: queryParameters(articlesQuerySchema),
         responses: listResponses("Liste paginée des articles.", articleSchema),
       },
+      post: {
+        tags: ["Content"],
+        summary: "Créer un article, réservé à un administrateur.",
+        security: [{ adminSession: [] }],
+        requestBody: requestBody(articleWriteSchema),
+        responses: {
+          "201": jsonResponse("Article créé.", successSchema(articleSchema)),
+          "400": standardErrors["400"],
+          "401": articleMutationErrors["401"],
+          "403": standardErrors["403"],
+          "404": articleMutationErrors["404"],
+          "409": articleMutationErrors["409"],
+          "429": standardErrors["429"],
+          "500": standardErrors["500"],
+        },
+      },
     },
     "/api/v1/content/articles/{slug}": {
       get: {
@@ -160,6 +297,72 @@ export const openApiDocument = {
         summary: "Lire un article par son slug.",
         parameters: [slugParameter],
         responses: detailResponses("Article demandé.", articleSchema),
+      },
+      put: {
+        tags: ["Content"],
+        summary: "Remplacer un article, réservé à un administrateur.",
+        security: [{ adminSession: [] }],
+        parameters: [slugParameter],
+        requestBody: requestBody(articleWriteSchema),
+        responses: {
+          "200": jsonResponse("Article modifié.", successSchema(articleSchema)),
+          "400": standardErrors["400"],
+          "401": articleMutationErrors["401"],
+          "403": standardErrors["403"],
+          "404": articleMutationErrors["404"],
+          "409": articleMutationErrors["409"],
+          "429": standardErrors["429"],
+          "500": standardErrors["500"],
+        },
+      },
+      delete: {
+        tags: ["Content"],
+        summary: "Supprimer un article, réservé à un administrateur.",
+        security: [{ adminSession: [] }],
+        parameters: [slugParameter],
+        responses: {
+          "204": { description: "Article supprimé." },
+          "401": articleMutationErrors["401"],
+          "403": standardErrors["403"],
+          "404": articleMutationErrors["404"],
+          "429": standardErrors["429"],
+          "500": standardErrors["500"],
+        },
+      },
+    },
+    "/api/v1/content/categories": {
+      get: {
+        tags: ["Content"],
+        summary: "Lister les catégories paginées pour le formulaire admin.",
+        parameters: queryParameters(categoriesQuerySchema),
+        responses: listResponses("Liste paginée des catégories.", categorySchema),
+      },
+    },
+    "/api/v1/content/images": {
+      post: {
+        tags: ["Content"],
+        summary: "Importer une image validée dans Cloudinary, réservé à un administrateur.",
+        security: [{ adminSession: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["image"],
+                properties: { image: { type: "string", format: "binary" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": jsonResponse("Image importée.", successSchema(uploadResponseSchema)),
+          "400": standardErrors["400"],
+          "401": articleMutationErrors["401"],
+          "403": standardErrors["403"],
+          "429": standardErrors["429"],
+          "500": standardErrors["500"],
+        },
       },
     },
     "/api/v1/content/tutorials": {

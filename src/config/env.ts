@@ -11,12 +11,30 @@ const envSchema = z
       return renderExternalUrl || undefined;
     }, z.string().url().optional()),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
+    ADMIN_REGISTRATION_SECRET: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().min(32).optional(),
+    ),
+    RESEND_API_KEY: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().min(1).optional(),
+    ),
+    EMAIL_FROM: z.string().min(3).default("Feeti Blog <noreply@example.com>"),
+    FRONTEND_BASE_URL: z.string().url().default("https://feetiblogfront.vercel.app"),
     DATABASE_URL: z.string().min(1),
     DIRECT_URL: z.string().min(1),
     CLOUDINARY_URL: z.string().min(1),
     CORS_ORIGINS: z
-      .string()
-      .default("")
+      .preprocess(
+        (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+        z
+          .string()
+          .default(
+            process.env.NODE_ENV === "production"
+              ? "https://feetiblogfront.vercel.app"
+              : "http://localhost:5173",
+          ),
+      )
       .transform((value) =>
         value
           .split(",")

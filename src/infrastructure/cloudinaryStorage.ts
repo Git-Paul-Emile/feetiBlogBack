@@ -28,6 +28,27 @@ export interface CloudinaryImage {
   secureUrl: string;
 }
 
+export async function uploadArticleImage(buffer: Buffer, mimeType: string): Promise<CloudinaryImage> {
+  configureCloudinary();
+  return new Promise((resolve, reject) => {
+    const upload = cloudinary.uploader.upload_stream(
+      { folder: "feeti-blog/articles", resource_type: "image", allowed_formats: ["jpg", "png", "webp"] },
+      (error, result) => {
+        if (error) {
+          reject(new Error("Cloudinary n'a pas pu enregistrer l'image.", { cause: error }));
+          return;
+        }
+        if (!isCloudinaryImageResult(result)) {
+          reject(new Error("Cloudinary a renvoyé une image invalide."));
+          return;
+        }
+        resolve({ publicId: result.public_id, secureUrl: result.secure_url });
+      },
+    );
+    upload.end(buffer);
+  });
+}
+
 function isCloudinaryImageResult(value: unknown): value is { public_id: string; secure_url: string } {
   return (
     typeof value === "object" &&
