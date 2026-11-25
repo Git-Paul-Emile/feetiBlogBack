@@ -12,10 +12,10 @@ dans `.env`, puis ajouter `schema=feeti_blog` aux paramètres de requête des de
 PostgreSQL. Ne pas committer `.env`. Les noms des variables et des exemples sont dans
 `.env.example`.
 
-En production, définir également `NODE_ENV=production` et `PUBLIC_BASE_URL` avec l'URL
-HTTPS du service. `render.yaml` décrit les commandes de build, migration, démarrage et
-health check. Les trois variables secrètes doivent être renseignées dans l'environnement
-Render.
+En production, définir `NODE_ENV=production`. Sur Render, `PUBLIC_BASE_URL` utilise
+automatiquement `RENDER_EXTERNAL_URL`; ailleurs, fournir cette variable avec l'URL HTTPS
+publique. `render.yaml` décrit les commandes de build, migration, démarrage et health
+check. Les trois variables secrètes doivent être renseignées dans l'environnement Render.
 
 ## Migration et données initiales
 
