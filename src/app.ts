@@ -26,7 +26,7 @@ const enforceTrustedOrigin: RequestHandler = (request, _response, next) => {
 };
 
 const httpsRedirect: RequestHandler = (request, response, next) => {
-  if (env.NODE_ENV !== "production" || request.secure) {
+  if (env.NODE_ENV !== "production" || env.RENDER_EXTERNAL_URL || request.secure) {
     next();
     return;
   }

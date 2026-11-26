@@ -5,6 +5,10 @@ const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    RENDER_EXTERNAL_URL: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().url().optional(),
+    ),
     PUBLIC_BASE_URL: z.preprocess((value) => {
       if (typeof value === "string" && value.trim() !== "") return value;
       const renderExternalUrl = process.env.RENDER_EXTERNAL_URL?.trim();
